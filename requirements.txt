@@ -1,7 +1,4 @@
-wheel
-setuptools
-wordcloud==1.8.0
-streamlit
-tika
-pandas
-matplotlib
+streamlit==1.40.1
+tika==2.6.0
+pandas>=2.0.0
+matplotlib>=3.0.0
