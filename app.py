@@ -1,57 +1,57 @@
-import os
-import re
 from tika import parser
 import streamlit as st
-import matplotlib.pyplot as plt
+import re
+from io import StringIO
 
-# Function to parse .eml file and extract response
 def extract_responses(file):
-    parsed = parser.from_file(file)
+    """Extract responses from an uploaded .eml file."""
+    # Parse the file content
+    parsed = parser.from_buffer(file.read())
     email_content = parsed.get("content", "")
 
-    # Regex to extract user response
+    # Regex to extract user responses
     match = re.search(r"(?<=Re:).*?(?=\nSent from|\nOn \w+|$)", email_content, re.S | re.I)
 
     if match:
         return match.group(0).strip()
-    return "No clear response found."
+    else:
+        return "No clear response found."
 
-# Main Streamlit App
 def main():
     st.title("EML File Converter & Word Cloud Generator")
+    st.write("Upload your .eml files")
 
-    # File Uploader
-    uploaded_files = st.file_uploader("Upload your .eml files", type=["eml"], accept_multiple_files=True)
+    # File uploader
+    uploaded_files = st.file_uploader("Drag and drop files here", accept_multiple_files=True, type=["eml"])
 
     if uploaded_files:
+        st.write("Processing uploaded files...")
         responses = []
 
-        # Process each uploaded file
         for uploaded_file in uploaded_files:
-            with open(uploaded_file.name, "wb") as f:
-                f.write(uploaded_file.getbuffer())
+            response = extract_responses(uploaded_file)
+            responses.append((uploaded_file.name, response))
 
-            # Extract response
-            response = extract_responses(uploaded_file.name)
-            responses.append(response)
+        # Display results
+        for file_name, response in responses:
+            st.subheader(f"Response from {file_name}")
+            st.text(response)
 
-        # Display extracted responses
-        st.subheader("Extracted Responses")
-        for idx, response in enumerate(responses, start=1):
-            st.write(f"**Response {idx}:** {response}")
+        # Combine all responses for word cloud
+        all_responses = " ".join([resp for _, resp in responses])
+        generate_wordcloud(all_responses)
 
-        # Create Word Cloud
-        if responses:
-            st.subheader("Word Cloud")
-            text_corpus = " ".join(responses)
-            wordcloud = WordCloud(width=800, height=400, background_color="white").generate(text_corpus)
+def generate_wordcloud(text):
+    """Generate and display a word cloud."""
+    from wordcloud import WordCloud
+    import matplotlib.pyplot as plt
 
-            # Display Word Cloud
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.imshow(wordcloud, interpolation="bilinear")
-            ax.axis("off")
-            st.pyplot(fig)
+    st.subheader("Word Cloud")
+    wordcloud = WordCloud(width=800, height=400, background_color="white").generate(text)
+    fig, ax = plt.subplots()
+    ax.imshow(wordcloud, interpolation="bilinear")
+    ax.axis("off")
+    st.pyplot(fig)
 
-# Run the app
 if __name__ == "__main__":
     main()
