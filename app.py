@@ -2,6 +2,7 @@ import os
 import re
 from tika import parser
 import streamlit as st
+import tempfile
 
 # Function to parse .eml file and extract responses
 def extract_responses(file):
@@ -27,9 +28,20 @@ def main():
     if uploaded_files:
         st.subheader("Extraction Results")
         for uploaded_file in uploaded_files:
-            response = extract_responses(uploaded_file.name)
-            st.write(f"**{uploaded_file.name}**")
-            st.text_area("Response:", value=response, height=150)
+            # Use a temporary file for Tika processing
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".eml") as temp_file:
+                temp_file.write(uploaded_file.read())
+                temp_file_path = temp_file.name
+            
+            try:
+                response = extract_responses(temp_file_path)
+                st.write(f"**{uploaded_file.name}**")
+                st.text_area("Response:", value=response, height=150)
+            except Exception as e:
+                st.error(f"Failed to process file {uploaded_file.name}: {str(e)}")
+            finally:
+                # Clean up temporary file
+                os.unlink(temp_file_path)
 
 # Run the app
 if __name__ == "__main__":
