@@ -1,48 +1,62 @@
-import os
 import re
 from tika import parser
 import streamlit as st
-import tempfile
 
-# Function to parse .eml file and extract responses
+
 def extract_responses(file):
-    """Extract response content from an .eml file."""
-    parsed = parser.from_file(file)
+    """
+    Extracts the meaningful responses from the .eml file content.
+    """
+    parsed = parser.from_buffer(file)
     email_content = parsed.get("content", "")
-
-    # Regex to extract user response (adjust as needed)
+    
+    # Use regex to clean and extract user responses
     match = re.search(r"(?<=Re:).*?(?=\nSent from|\nOn \w+|$)", email_content, re.S | re.I)
     if match:
         response = match.group(0).strip()
     else:
         response = "No clear response found."
+
+    # Remove unwanted characters
+    response = re.sub(r'[^\x20-\x7E\n]', '', response)
     return response
 
-# Main Streamlit app
-def main():
-    st.title("EML File Converter")
-    st.write("Upload your .eml files, and I'll extract the responses!")
 
-    uploaded_files = st.file_uploader("Upload .eml files", accept_multiple_files=True, type="eml")
+def save_to_txt(file_name, content):
+    """
+    Saves the extracted content to a .txt file.
+    """
+    with open(file_name, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+def main():
+    st.title("EML File Converter & Response Extractor")
+    st.write("Upload your `.eml` files to extract responses and save them as `.txt`.")
+
+    uploaded_files = st.file_uploader(
+        "Upload .eml files", type="eml", accept_multiple_files=True
+    )
 
     if uploaded_files:
-        st.subheader("Extraction Results")
-        for uploaded_file in uploaded_files:
-            # Use a temporary file for Tika processing
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".eml") as temp_file:
-                temp_file.write(uploaded_file.read())
-                temp_file_path = temp_file.name
-            
-            try:
-                response = extract_responses(temp_file_path)
-                st.write(f"**{uploaded_file.name}**")
-                st.text_area("Response:", value=response, height=150)
-            except Exception as e:
-                st.error(f"Failed to process file {uploaded_file.name}: {str(e)}")
-            finally:
-                # Clean up temporary file
-                os.unlink(temp_file_path)
+        st.write("Processing files...")
 
-# Run the app
+        for uploaded_file in uploaded_files:
+            # Extract meaningful response
+            response = extract_responses(uploaded_file)
+
+            # Display results in the app
+            st.subheader(f"Extraction Results for {uploaded_file.name}")
+            st.text_area(f"Response from {uploaded_file.name}", response)
+
+            # Save to a .txt file
+            txt_file_name = uploaded_file.name.replace(".eml", ".txt")
+            save_to_txt(txt_file_name, response)
+
+            st.success(f"Saved to: {txt_file_name}")
+
+        st.success("All files processed successfully!")
+
+
 if __name__ == "__main__":
     main()
