@@ -1,33 +1,36 @@
-import streamlit as st
-from tika import parser
 import os
 import re
+from tika import parser
+import streamlit as st
 
-# Configure Tika server to use local JAR file
-os.environ['TIKA_SERVER_JAR'] = r"E:\Projects\Word Clous\Tika\tika-app-3.0.0.jar"
+# Function to extract response from email content
+def extract_response(email_content):
+    match = re.search(r"(?<=Re:).*?(?=\nSent from|\nOn \w+|$)", email_content, re.S | re.I)
+    if match:
+        return match.group(0).strip()
+    return "No clear response found."
 
-# Function to process EML files
-def process_eml_file(file_path):
-    parsed = parser.from_file(file_path)
-    content = parsed.get('content', '').strip()
-    return content
+# Streamlit App
+st.title("EML File Response Extractor")
+st.write("Upload your `.eml` files to extract responses.")
 
-# Streamlit interface
-st.title("EML Response Extractor")
-uploaded_file = st.file_uploader("Upload EML files", type=["eml"])
+# File uploader for multiple files
+uploaded_files = st.file_uploader("Upload .eml files", type=["eml"], accept_multiple_files=True)
 
-if uploaded_file is not None:
+if uploaded_files:
     st.write("Processing files...")
-    try:
-        # Save uploaded file temporarily
-        with open(uploaded_file.name, 'wb') as f:
-            f.write(uploaded_file.read())
 
-        # Process the uploaded file
-        response = process_eml_file(uploaded_file.name)
-        if response:
-            st.text_area("Extracted Content", response, height=300)
-        else:
-            st.write("No content found in the file.")
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
+    for uploaded_file in uploaded_files:
+        # Parse the email content using Tika
+        email_content = uploaded_file.read().decode("utf-8")  # Decode the uploaded file
+        parsed = parser.from_buffer(email_content)
+        extracted_text = parsed.get("content", "")
+
+        # Extract the response using regex
+        response = extract_response(extracted_text)
+
+        # Display results on the page
+        st.subheader(f"Response from {uploaded_file.name}:")
+        st.text(response)
+
+st.write("Upload more files to process their responses!")
