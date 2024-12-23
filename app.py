@@ -1,62 +1,52 @@
+import os
 import re
 from tika import parser
 import streamlit as st
 
-
+# Function to parse .eml file and extract response
 def extract_responses(file):
-    """
-    Extracts the meaningful responses from the .eml file content.
-    """
-    parsed = parser.from_buffer(file)
+    parsed = parser.from_file(file)
     email_content = parsed.get("content", "")
     
-    # Use regex to clean and extract user responses
+    # Regex to extract user response (customize as needed)
     match = re.search(r"(?<=Re:).*?(?=\nSent from|\nOn \w+|$)", email_content, re.S | re.I)
     if match:
-        response = match.group(0).strip()
-    else:
-        response = "No clear response found."
+        return match.group(0).strip()
+    return ""
 
-    # Remove unwanted characters
-    response = re.sub(r'[^\x20-\x7E\n]', '', response)
-    return response
-
-
-def save_to_txt(file_name, content):
-    """
-    Saves the extracted content to a .txt file.
-    """
-    with open(file_name, "w", encoding="utf-8") as f:
-        f.write(content)
-
-
+# Main function for Streamlit app
 def main():
-    st.title("EML File Converter & Response Extractor")
-    st.write("Upload your `.eml` files to extract responses and save them as `.txt`.")
+    st.title("EML File Converter & Combined Text Generator")
+    st.subheader("Upload your .eml files")
 
     uploaded_files = st.file_uploader(
-        "Upload .eml files", type="eml", accept_multiple_files=True
+        "Drag and drop files here",
+        type=["eml"],
+        accept_multiple_files=True
     )
 
-    if uploaded_files:
-        st.write("Processing files...")
+    if st.button("Process Files"):
+        if uploaded_files:
+            combined_text = ""
+            for uploaded_file in uploaded_files:
+                # Extract response from each file
+                response = extract_responses(uploaded_file)
+                combined_text += response + "\n\n"
 
-        for uploaded_file in uploaded_files:
-            # Extract meaningful response
-            response = extract_responses(uploaded_file)
+            # Save combined text to a file
+            combined_file_name = "combined_output.txt"
+            with open(combined_file_name, "w", encoding="utf-8") as f:
+                f.write(combined_text)
 
-            # Display results in the app
-            st.subheader(f"Extraction Results for {uploaded_file.name}")
-            st.text_area(f"Response from {uploaded_file.name}", response)
-
-            # Save to a .txt file
-            txt_file_name = uploaded_file.name.replace(".eml", ".txt")
-            save_to_txt(txt_file_name, response)
-
-            st.success(f"Saved to: {txt_file_name}")
-
-        st.success("All files processed successfully!")
-
+            st.success("All files processed successfully!")
+            st.download_button(
+                label="Download Combined Text",
+                data=combined_text,
+                file_name="combined_output.txt",
+                mime="text/plain"
+            )
+        else:
+            st.warning("Please upload at least one file.")
 
 if __name__ == "__main__":
     main()
