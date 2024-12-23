@@ -2,7 +2,6 @@ import os
 import re
 from tika import parser
 import streamlit as st
-from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 
 # Function to parse .eml file and extract response
