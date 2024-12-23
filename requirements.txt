@@ -1,3 +1,5 @@
-wordcloud==1.8.2.2
+wordcloud==1.8.1
 matplotlib==3.8.0
-pandas==2.0.3  # Optional, for advanced text processing
+streamlit==1.40.1
+tika==2.6.0
+requests==2.32.3
